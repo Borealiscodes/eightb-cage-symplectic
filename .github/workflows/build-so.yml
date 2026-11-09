@@ -1,0 +1,42 @@
+name: Build and Package Manifold Engine
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-shared-object:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository source tree
+      uses: actions/checkout@v4
+
+    - name: Set up Julia Environment Runtime
+      uses: julia-actions/setup-julia@v1
+      with:
+        version: '1.10'
+
+    - name: Cache Julia Package Manifest dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.julia
+        key: ${{ runner.os }}-julia-${{ hashFiles('julia/Project.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-julia-
+
+    - name: Instantiate Project Manifest and Execute Sysimage Compiler
+      run: |
+        cd julia
+        julia --project -e 'using Pkg; Pkg.instantiate(); include("compile.jl")'
+      env:
+        JULIA_NUM_THREADS: 1
+
+    - name: Archive Compiled Native Shared Binary Asset
+      uses: actions/upload-artifact@v4
+      with:
+        name: libgeometric_cage-shared-object
+        path: julia/libgeometric_cage.so
+        if-no-files-found: error
