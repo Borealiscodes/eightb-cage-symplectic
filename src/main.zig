@@ -1,4 +1,5 @@
 const std = @import("std");
+const net = std.net;
 
 /// C-ABI Compatible mapping mirroring the exact un-rounded fraction vectors
 /// expected by the compiled Julia libgeometric_cage.so library.
@@ -63,7 +64,7 @@ pub fn main() !void {
     const dimension: usize = 80; 
     
     std.log.info("==================================================================", .{});
-    std.log.info("Initializing 8b-Cage Symplectic Un-Rounded Rational Audit Engine", .{});
+    std.log.info("Initializing 8b-Cage Passive Network Intercept Stream Engine", .{});
     std.log.info("Target Space Geometry: 2N Manifold [N={d} dimensions]", .{dimension});
     std.log.info("==================================================================", .{});
 
@@ -86,7 +87,6 @@ pub fn main() !void {
     // Seed the weight tensor integers (simulating routing layer weights)
     @memset(weights, 2);
 
-    // 4. Wrap array heads into our extern FFI struct envelope
     const state = RationalState2N{
         .q_num_ptr = q_num.ptr,
         .q_den_ptr = q_den.ptr,
@@ -94,28 +94,74 @@ pub fn main() !void {
         .p_den_ptr = p_den.ptr,
     };
 
-    // Define time-step delta exactly as 1/100 (Bypassing floats to achieve zero micro-rounding drift)
-    const dt_num: i64 = 1;
-    const dt_den: i64 = 100;
+    // 4. Bind to the local network port topology matching eightb-agy-fanout daemon
+    const listen_address = try net.Address.parseIp("127.0.0.1", 18815);
+    var socket = try std.posix.socket(listen_address.any.family, std.posix.SOCK.DGRAM, std.posix.IPPROTO.UDP);
+    defer std.posix.close(socket);
 
-    std.log.info("Executing zero-copy parallel transport intercept step...", .{});
+    // Enable socket address reuse to prevent binding lockups across runtime restarts
+    try std.posix.setsockopt(socket, std.posix.SOL.SOCKET, std.posix.SO.REUSEADDR, &std.mem.toBytes(@as(c_int, 1)));
+    try std.posix.bind(socket, &listen_address.any, listen_address.getOsSockLen());
 
-    // 5. Invoke the bare-metal auditing calculations natively via the shared library
-    const accumulated_drift = compute_rational_leapfrog_step!(
-        state, 
-        dimension, 
-        dt_num, 
-        dt_den, 
-        weights.ptr
-    );
+    std.log.info("Passive auditing socket securely bound to 127.0.0.1:18815. Sniffing packets...", .{});
 
-    // 6. Run automated circuit-breaker verification checks against our scalar threshold
-    std.log.info("Audit cycle complete. Raw Drift Invariant Numerator: {d}", .{accumulated_drift});
+    // Allocate network packet container strictly aligned to standard CPU cache lines
+    var packet_buffer: [64]u8 align(64) = undefined;
 
-    const DRIFT_MAX_NUMERATOR: i64 = 50000;
-    if (accumulated_drift > DRIFT_MAX_NUMERATOR) {
-        std.log.warn("⚠️  CRITICAL CONTEXT DRIFT: Parallel agent branch has compromised phase-space bounds!", .{});
-    } else {
-        std.log.info("✅ Trajectory verification successful. Rational geometric invariant preserved.", .{});
+    while (true) {
+        // Blocks until a 64-byte LanFrame64 data chunk strikes the network interface
+        const bytes_received = std.posix.recvfrom(socket, &packet_buffer, 0, null, null) catch |err| {
+            std.log.err("Socket read exception encountered: {}", .{err});
+            continue;
+        };
+
+        if (bytes_received != 64) {
+            std.log.warn("Frame dropped: Invalid byte payload structure length ({d}/64).", .{bytes_received});
+            continue;
+        }
+
+        // Safe zero-copy cast from raw hardware bytes into our validated struct mapping
+        const frame: *const LanFrame64 = @ptrCast(&packet_buffer);
+
+        // Verification Checks
+        if (!frame.isValid()) {
+            std.log.warn("Frame dropped: Unauthorized seal gate signature or constellation magic mismatch.", .{});
+            continue;
+        }
+
+        if (!frame.verifyIntegrity()) {
+            std.log.err("SECURITY ALERT: Dropped packet due to broken SWAR fold-tag checksum integrity check!", .{});
+            continue;
+        }
+
+        // Dynamically mutate trajectory states using exact integer indices instead of rewriting the slice reference pointers
+        const mask_signal: i64 = @intCast(frame.completed_mask);
+        q_num[0] = @intCast(frame.task_id); 
+        p_num[0] = if (mask_signal == 0) 1 else mask_signal;
+
+        // Define exact un-rounded integration metrics (Bypassing f64 decimal drift completely)
+        const dt_num: i64 = 1;
+        const dt_den: i64 = 100;
+
+        // 5. Invoke the bare-metal auditing calculations natively via the shared library
+        const accumulated_drift = compute_rational_leapfrog_step!(
+            state, 
+            dimension, 
+            dt_num, 
+            dt_den, 
+            weights.ptr
+        );
+
+        // 6. Run automated circuit-breaker verification checks against our scalar threshold
+        const DRIFT_MAX_NUMERATOR: i64 = 50000;
+        if (accumulated_drift > DRIFT_MAX_NUMERATOR) {
+            std.log.warn("⚠️  CRITICAL CONTEXT DRIFT DETECTED [Worker ID: {d} | Sequence: {d}]. Invariant Drift Delta: {d}", .{
+                frame.worker_id,
+                frame.sequence,
+                accumulated_drift,
+            });
+        } else {
+            std.log.info("✅ Trajectory verification step passed for Sequence: {d}. Rational bound verified.", .{frame.sequence});
+        }
     }
 }
