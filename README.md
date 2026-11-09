@@ -1,3 +1,41 @@
+# 🏗️ UNDER CONSTRUCTION: REFITTING TO FORENSIC LEDGER MODEL
+### Current Sprint: Out-of-Band Architectural Sync with `eightb-agy-fanout` v0.3.0+
+
+> **NOTICE:** The `eightb-cage-symplectic` interceptor framework is undergoing an intense structural overhaul. We are deprecating the inline, active UDP packet-blocking interception loops. The platform is being refitted as an **Authoritative Out-of-Band Real-Time Forensic Ledger** and Epochal Sovereign Shield. 
+
+---
+
+## ⚠ CRITICAL ARCHITECTURAL DISCLAIMER & DECOUPLED SYSTEMS METRIC NOTICE
+
+### 1. No Active Production Guarantees
+This repository functions strictly as a theoretical framework, out-of-band diagnostic prototype, and clean-room mathematical sandbox. It is explicitly independent of, and completely un-tested live against, production runtime clusters of the core **8b Project** execution infrastructure. All internal shared-memory mapping matrices, C-ABI foreign function interfaces (FFI), and stasis feedback channels are structural reference blueprints for researchers.
+
+### 2. The In-Band "Formally Verified" Delusion
+Engineers, safety auditors, and distributed systems methods teams must discard the false security of single-toolchain in-band verification checks. The presence of green compilation flags in localized implementations (such as Peter Lodri's `arm_cortex_m7_spark` drivers or Stage 4 Verifier packages) guarantees *only* syntactic type safety, memory alignment compliance, and lack of buffer overruns. 
+
+Inline compilation checks cannot reason about real-world runtime mathematical honesty, hardware register anomalies, or physical transmission drifts. Calling an entire hyper-dimensional system "formally verified" based exclusively on static SMT contracts is an epistemic category error.
+
+### 3. Documented Multi-Port Cluster Engineering Collisions
+The recent evolution of the `eightb-agy-fanout` core scheduler into a 5-Stage Router-Orchestrator-Builder-Verifier-Compressor (ROBV-C) pipeline introduces four explicit engineering bottlenecks that make inline execution blocking a structural deadlock:
+
+*   **Temporal Asymmetry and Kernel Latency Gaps:** The target architecture executes single-register BitmaskDag wave updates at **13.86 ns/op** and `LanFrame64` wire sealing routines at **2.16 ns/op** using native Apple Silicon `cntvct_el0` hardware microbenchmarks. Forcing an out-of-band supervisor loop to synchronously validate trajectories step-by-step introduces an intolerable latency tax, destroying the bare-metal efficiency of the cluster scheduler.
+*   **Payload Multiplexing Context Noise:** The network streaming payload `[u8; 24]` is heavily overloaded. Depending on the active subagent wave (Worker 0: Heretic Reasoning, Worker 1: Sota Codegen, Worker 5: KVM Vision), the registers transport varying metadata formats—including 16-bit `mlx-quant` seals (`0x019F`), 3-byte Base-243 balanced-ternary trits, or raw `/dev/hidg0` USB reports. Blind parsing maps chaotic inputs directly into the integrator space, yielding false-positive stasis trips.
+*   **Multi-Tenant Column Contamination:** The internal 64-worker heap matrix grid of this cage assumes clean execution tracking isolation. However, the automated BLSR wave scheduler recycles `worker_id` register lanes dynamically based on task dependencies. This cross-contaminates the momentum paths ($\mathbf{p}$) of short-lived classification steps with long-horizon uncensored mathematical reasoning sequences, wiping out trajectory telemetry history.
+*   **Singular Value Condition Collapse:** Compressing continuous 64-bit precision fields through lossy, un-dithered Base-3 ternary gates introduces heavy rounding noise. In an 80-dimensional embedding space, this step noise degrades the linear independence of adjacent coordinates, collapsing the minimum singular value ($\sigma_{\min} \to 0^+$) and triggering exponential condition number spikes ($\kappa_2 \gg 4.5$) that crash unmitigated verification pipelines.
+
+---
+
+## 🛠 Active Mitigation Upgrades (v4.0 Architectural Spec)
+
+To absorb these structural mismatches, the repository is being migrated away from reactive network streaming in favor of an **Asynchronous Forensic Ledger** model driven by the core mathematical primitives of `Manifold80Drefined.v`:
+
+1.  **POSIX Shared Memory Interception:** Swapping out passive UDP socket sniffing entirely for a zero-allocation, bare-metal memory-mapped interface attached directly to the `omni-todos` MCP Task Ledger.
+2.  **Tikhonov Regularization Hooks:** Clamping the condition number spectrum from below via a non-vanishing identity shift ($\mathbf{A}_{\text{reg}} = \mathbf{A} + \lambda \cdot \text{Id}_{80}$, where $\lambda = 0.0015$) to structurally neutralize quantization noise.
+3.  **Analytic Softplus Apex Floors:** Preventing division-by-zero hardware traps at mechanical rest ($r = 0$) by isolating Laplacian denominators through an analytic floor function $\psi(r) = \eta \ln(1 + e^{r/\epsilon})$.
+4.  **The Epochal Guillotine Tactic:** Repositioning the cage to serve as an authoritative epochal referee. It will not slow down individual execution steps; instead, it continuously builds an un-rounded integer fraction ($p/q$) historical record of system coordinates. If trajectory boundaries breach the constraints proved in `CurvatureEvolution.v`, it invalidates the cryptographic signature of the current epoch, firing an immediate cluster-wide `0x0F` stasis shutdown.
+
+
+
 # EightB Cage Symplectic (8b-cage-symplectic)
 ### Real-Time Un-Rounded Rational Audit Engine for Asynchronous Agent Orchestration
 
