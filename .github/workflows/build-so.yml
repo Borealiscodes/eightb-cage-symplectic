@@ -34,6 +34,12 @@ jobs:
       env:
         JULIA_NUM_THREADS: 1
 
+    - name: Verify Compiled Native Export Symbols
+      run: |
+        # Assert the lib exists and check that our un-flagged C symbol name matches the header mapping
+        ls -la julia/libgeometric_cage.so
+        nm -D julia/libgeometric_cage.so | grep compute_branch_leapfrog_step
+
     - name: Archive Compiled Native Shared Binary Asset
       uses: actions/upload-artifact@v4
       with:
