@@ -1,29 +1,50 @@
 # julia/src/GeometricCage.jl
 module GeometricCage
 
-export RationalState2N, compute_rational_leapfrog_step!
+export MultiBranchCage, initialize_cage!, compute_branch_leapfrog_step!, setup_global_audit_arena
 
 """
-C-Compatible layout matching the 8b Project's exact p/q rational infrastructure.
-Instead of floating-point arrays, coordinates are stored as paired integer numerators 
-and denominators to achieve zero micro-rounding drift.
+Persistent matrix layout stored on the Julia heap.
+Maintains un-rounded rational coordinates across an explicit 64-worker grid
+to provide true multi-tenant parallel execution trajectory isolation.
 """
-struct RationalState2N
-    q_num_ptr::Ptr{Int64}  # Intent numerators (Dimension N)
-    q_den_ptr::Ptr{Int64}  # Intent denominators (Dimension N)
-    p_num_ptr::Ptr{Int64}  # Context/Momentum numerators (Dimension N)
-    p_den_ptr::Ptr{Int64}  # Context/Momentum denominators (Dimension N)
+struct MultiBranchCage
+    q_num::Matrix{Int64}
+    q_den::Matrix{Int64}
+    p_num::Matrix{Int64}
+    p_den::Matrix{Int64}
+end
+
+# Global mutable pointer wrapper container to preserve arena states across FFI boundaries
+const CAGE_RESERVOIR = Ref{MultiBranchCage}()
+
+"""
+    initialize_cage!(dim::Int, max_workers::Int=64)
+
+Allocates isolated phase-space fields on the matrix substrate heap.
+"""
+function initialize_cage!(dim::Int, max_workers::Int=64)
+    return MultiBranchCage(
+        ones(Int64, dim, max_workers),          # q_num initialized to 1
+        fill(Int64(10), dim, max_workers),      # q_den initialized to 10 (q = 1/10)
+        zeros(Int64, dim, max_workers),         # p_num initialized to 0
+        ones(Int64, dim, max_workers)           # p_den initialized to 1  (p = 0/1)
+    )
+end
+
+Base.@ccallable function setup_global_audit_arena(dim::Csize_t)::Cint
+    CAGE_RESERVOIR[] = initialize_cage!(Int(dim), 64)
+    return Cint(0)
 end
 
 """
-    compute_rational_leapfrog_step!(state::RationalState2N, dim::Csize_t, dt_num::Int64, dt_den::Int64, weights_ptr::Ptr{Int64})::Int64
+    compute_branch_leapfrog_step!(worker_id::Csize_t, dim::Csize_t, dt_num::Int64, dt_den::Int64, weights_ptr::Ptr{Int64})::Int64
 
-Executes an exact, un-rounded Symplectic Leapfrog integration step across the 2N manifold.
-Operates natively on Zig-allocated integer buffers with machine precision.
-Returns the integer numerator of the drift energy (normalized against the global denominator).
+Executes an un-rounded Symplectic Leapfrog integration step over an isolated worker column slice.
+Bypasses float micro-rounding drift completely via exact integer ratio cross-multiplication arithmetic.
 """
-Base.@ccallable function compute_rational_leapfrog_step!(
-    state::RationalState2N, 
+Base.@ccallable function compute_branch_leapfrog_step!(
+    worker_id::Csize_t, 
     dim::Csize_t,
     dt_num::Int64,
     dt_den::Int64,
@@ -31,77 +52,74 @@ Base.@ccallable function compute_rational_leapfrog_step!(
 )::Int64
 
     N = Int(dim)
+    # Convert 0-indexed worker_id from Zig to 1-indexed column pointer for Julia matrices
+    w_idx = Int(worker_id) + 1 
     
-    # Map the un-rounded integer coordinate arrays directly across the C-ABI
-    q_num = unsafe_wrap(Array, state.q_num_ptr, N; own=false)
-    q_den = unsafe_wrap(Array, state.q_den_ptr, N; own=false)
-    p_num = unsafe_wrap(Array, state.p_num_ptr, N; own=false)
-    p_den = unsafe_wrap(Array, state.p_den_ptr, N; own=false)
+    # Safely reference our global arena structures
+    cage = CAGE_RESERVOIR[]
+    
+    # Map the connection tensor weights natively 
     W_matrix = unsafe_wrap(Array, weights_ptr, (N, N); own=false)
     
     # 1. POSITION HALF-STEP: q = q + (dt / 2) * p
-    # Evaluated via exact cross-multiplication fraction arithmetic
     @inbounds for i in 1:N
-        # dt/2 multiplication
-        step_num = dt_num * p_num[i]
-        step_den = dt_den * 2 * p_den[i]
+        step_num = dt_num * cage.p_num[i, w_idx]
+        step_den = dt_den * 2 * cage.p_den[i, w_idx]
         
-        # Add to current q fraction: num/den = (q_num/q_den) + (step_num/step_den)
-        new_num = q_num[i] * step_den + step_num * q_den[i]
-        new_den = q_den[i] * step_den
+        new_num = cage.q_num[i, w_idx] * step_den + step_num * cage.q_den[i, w_idx]
+        new_den = cage.q_den[i, w_idx] * step_den
         
-        # Simplify fraction using Greatest Common Divisor to prevent integer overflow
         g = gcd(new_num, new_den)
-        q_num[i] = div(new_num, g)
-        q_den[i] = div(new_den, g)
+        cage.q_num[i, w_idx] = div(new_num, g)
+        cage.q_den[i, w_idx] = div(new_den, g)
     end
     
     # 2. MOMENTUM FULL-STEP: p = p - dt * ∇W(q)
-    # The gradient is derived from the un-rounded router weight matrix
     drift_energy_num = 0
     @inbounds for i in 1:N
         grad_num = 0
         grad_den = 1
         
-        # Compute exact linear combination: ∇W_i = Sum(W_ij * q_j)
+        # Exact linear combination computation: ∇W_i = Sum(W_ij * q_j)
         for j in 1:N
-            term_num = W_matrix[i, j] * q_num[j]
-            term_den = q_den[j]
+            term_num = W_matrix[i, j] * cage.q_num[j, w_idx]
+            term_den = cage.q_den[j, w_idx]
             
-            grad_num = grad_num * term_term_den + term_num * grad_den
-            grad_den = grad_den * term_den
-            g_term = gcd(grad_num, grad_den)
-            grad_num = div(grad_num, g_term)
-            grad_den = div(grad_den, g_term)
+            accum_num = grad_num * term_den + term_num * grad_den
+            accum_den = grad_den * term_den
+            
+            g_term = gcd(accum_num, accum_den)
+            grad_num = div(accum_num, g_term)
+            grad_den = div(accum_den, g_term)
         end
         
-        # Multiply by dt: step = dt * grad
+        # Multiply by integration delta step: step = dt * grad
         step_num = dt_num * grad_num
         step_den = dt_den * grad_den
         
-        # Subtract from current p fraction
-        new_p_num = p_num[i] * step_den - step_num * p_p_den[i]
-        new_p_den = p_den[i] * step_den
+        # Inline subtraction from current p fraction vector
+        new_p_num = cage.p_num[i, w_idx] * step_den - step_num * cage.p_den[i, w_idx]
+        new_p_den = cage.p_den[i, w_idx] * step_den
         
         g_p = gcd(new_p_num, new_p_den)
-        p_num[i] = div(new_p_num, g_p)
-        p_den[i] = div(new_p_den, g_p)
+        cage.p_num[i, w_idx] = div(new_p_num, g_p)
+        cage.p_den[i, w_idx] = div(new_p_den, g_p)
         
-        # Accumulate exact drift energy scalar
-        drift_energy_num += div(new_p_num, g_p)^2
+        # Safely accumulate the exact scalar drift energy integer
+        drift_energy_num += cage.p_num[i, w_idx]^2
     end
     
     # 3. POSITION FINAL HALF-STEP: q = q + (dt / 2) * p
     @inbounds for i in 1:N
-        step_num = dt_num * p_num[i]
-        step_den = dt_den * 2 * p_den[i]
+        step_num = dt_num * cage.p_num[i, w_idx]
+        step_den = dt_den * 2 * cage.p_den[i, w_idx]
         
-        new_num = q_num[i] * step_den + step_num * q_den[i]
-        new_den = q_den[i] * step_den
+        new_num = cage.q_num[i, w_idx] * step_den + step_num * cage.q_den[i, w_idx]
+        new_den = cage.q_den[i, w_idx] * step_den
         
         g = gcd(new_num, new_den)
-        q_num[i] = div(new_num, g)
-        q_den[i] = div(new_den, g)
+        cage.q_num[i, w_idx] = div(new_num, g)
+        cage.q_den[i, w_idx] = div(new_den, g)
     end
     
     return drift_energy_num
