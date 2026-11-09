@@ -1,0 +1,15 @@
+# === Zig Build Footprints ===
+zig-cache/
+zig-out/
+bin/
+.zig-cache/
+
+# === Julia Binary Footprints ===
+*.so
+*.dll
+*.dylib
+julia/Manifest.toml
+
+# === System Overrides ===
+.DS_Store
+*.log
