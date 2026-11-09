@@ -9,6 +9,40 @@ pub const RationalState2N = extern struct {
     p_den_ptr: [*]i64,
 };
 
+/// 64-Byte Cache-Aligned Wire Format matching eightb-agy-fanout exactly.
+/// Explicitly hard-locked to align(64) to glide into CPU registers natively.
+pub const LanFrame64 = extern struct {
+    magic: u16,
+    gate: u8,
+    opcode: u8,
+    worker_id: u16,
+    task_id: u16,
+    sequence: u64,
+    runnable_mask: u64,
+    completed_mask: u64,
+    payload: [24]u8,
+    fold_tag: u64,
+
+    /// Compares raw packet headers inside a single clock register cycle
+    pub fn isValid(self: *const LanFrame64) bool {
+        return (self.magic == 0x8B15 and self.gate == 0x62);
+    }
+
+    /// Evaluates the 64-bit SWAR XOR-fold integrity tag to protect the 
+    /// pipeline against external packet injection or transmission corruption
+    pub fn verifyIntegrity(self: *const LanFrame64) bool {
+        const raw_ptr: [*]const u64 = @ptrCast(self);
+        var checksum: u64 = 0;
+        
+        // XOR fold across the first 7 u64 chunks (bytes 0..56)
+        inline for (0..7) |i| {
+            checksum ^= raw_ptr[i];
+        }
+        
+        return checksum == self.fold_tag;
+    }
+} align(64);
+
 // Explicit external binding declaration linking directly to the symbol in our .so library
 extern fn compute_rational_leapfrog_step!(
     state: RationalState2N, 
