@@ -1,7 +1,7 @@
 # julia/src/GeometricCage.jl
 module GeometricCage
 
-export MultiBranchCage, initialize_cage!, compute_branch_leapfrog_step!, setup_global_audit_arena
+export MultiBranchCage, initialize_cage!, compute_branch_leapfrog_step, setup_global_audit_arena
 
 """
 Persistent matrix layout stored on the Julia heap.
@@ -38,12 +38,13 @@ Base.@ccallable function setup_global_audit_arena(dim::Csize_t)::Cint
 end
 
 """
-    compute_branch_leapfrog_step!(worker_id::Csize_t, dim::Csize_t, dt_num::Int64, dt_den::Int64, weights_ptr::Ptr{Int64})::Int64
+    compute_branch_leapfrog_step(worker_id::Csize_t, dim::Csize_t, dt_num::Int64, dt_den::Int64, weights_ptr::Ptr{Int64})::Int64
 
 Executes an un-rounded Symplectic Leapfrog integration step over an isolated worker column slice.
 Bypasses float micro-rounding drift completely via exact integer ratio cross-multiplication arithmetic.
+Exposed over standard C-ABI rules (exclamation points stripped for compiler compatibility).
 """
-Base.@ccallable function compute_branch_leapfrog_step!(
+Base.@ccallable function compute_branch_leapfrog_step(
     worker_id::Csize_t, 
     dim::Csize_t,
     dt_num::Int64,
@@ -55,7 +56,7 @@ Base.@ccallable function compute_branch_leapfrog_step!(
     # Convert 0-indexed worker_id from Zig to 1-indexed column pointer for Julia matrices
     w_idx = Int(worker_id) + 1 
     
-    # Safely reference our global arena structures
+    # Safely reference our global arena structure values
     cage = CAGE_RESERVOIR[]
     
     # Map the connection tensor weights natively 
