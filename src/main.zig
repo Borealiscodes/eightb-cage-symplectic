@@ -55,7 +55,7 @@ pub fn main() !void {
     
     std.log.info("==================================================================", .{});
     std.log.info("Initializing 8b-Cage Passive Network Intercept Stream Engine", .{});
-    std.log.info("Target Space Geometry: 64 Isolated Concurrent Worker Channels", .{});
+    std.log.info("Target Space Geometry: Phase D Allostatic Circuit-Breaker Mesh", .{});
     std.log.info("==================================================================", .{});
 
     // 1. Fire initialization hook to construct the 64-worker substrate arena on the Julia heap
@@ -84,7 +84,17 @@ pub fn main() !void {
     var packet_buffer: [64]u8 align(64) = undefined;
 
     while (true) {
-        const bytes_received = std.posix.recvfrom(socket, &packet_buffer, 0, null, null) catch |err| {
+        // Blocks until a 64-byte LanFrame64 data chunk strikes the network interface
+        var remote_address: std.posix.sockaddr = undefined;
+        var remote_address_len: std.posix.socklen_t = @sizeOf(std.posix.sockaddr);
+        
+        const bytes_received = std.posix.recvfrom(
+            socket, 
+            &packet_buffer, 
+            0, 
+            &remote_address, 
+            &remote_address_len
+        ) catch |err| {
             std.log.err("Socket read exception encountered: {}", .{err});
             continue;
         };
@@ -127,6 +137,46 @@ pub fn main() !void {
                 frame.sequence,
                 accumulated_drift,
             });
+            
+            std.log.warn("🚨 ALLOSTATIC BREAKER TRIGGERED: Constructing isolation feedback signal...", .{});
+
+            // 6. PHASE D EXECUTION: Generate a high-priority, cache-aligned Allostatic Collapse Frame
+            var kill_frame align(64) = LanFrame64{
+                .magic = 0x8B15,
+                .gate = 0x62,
+                .opcode = 0x0F, // Hardcoded 0x0F Opcode maps straight to an un-bypassable cluster-wide stasis command
+                .worker_id = frame.worker_id,
+                .task_id = frame.task_id,
+                .sequence = frame.sequence,
+                .runnable_mask = 0, // Wipe the active execution bitmask
+                .completed_mask = @intCast(accumulated_drift), // Package the violation score as diagnostic telemetry
+                .payload = [_]u8{0} ** 24,
+                .fold_tag = 0,
+            };
+            @memcpy(kill_frame.payload[0..13], "ALLOSTATIC_SOV");
+
+            // Calculate the mandatory 64-bit SWAR fold checksum tag over the kill package layout
+            const raw_u64_ptr: [*]const u64 = @ptrCast(&kill_frame);
+            var checksum: u64 = 0;
+            inline for (0..7) |i| {
+                checksum ^= raw_u64_ptr[i];
+            }
+            kill_frame.fold_tag = checksum;
+
+            // Transmit the signed collapse package directly back to the fanned-out orchestration loop source
+            const outbound_bytes: [*]const u8 = @ptrCast(&kill_frame);
+            _ = std.posix.sendto(
+                socket, 
+                outbound_bytes[0..64], 
+                0, 
+                &remote_address, 
+                remote_address_len
+            ) catch |err| {
+                std.log.err("Failed to broadcast Allostatic circuit breaker feedback loop signal: {}", .{err});
+                continue;
+            };
+
+            std.log.err("⚡ Allostatic Collapse instruction broadcasted successfully. Worker {d} isolated in stasis.", .{frame.worker_id});
         } else {
             std.log.info("✅ Trajectory verification step passed for Worker {d} (Sequence: {d}).", .{frame.worker_id, frame.sequence});
         }
