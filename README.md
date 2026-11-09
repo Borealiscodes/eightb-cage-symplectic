@@ -1,6 +1,11 @@
 # EightB Cage Symplectic (8b-cage-symplectic)
 ### Real-Time Un-Rounded Rational Audit Engine for Asynchronous Agent Orchestration
 
+Original Project
+
+https://github.com/8b-is/eightb-agy-fanout
+
+
 `8b-cage-symplectic` is an **external, non-invasive research audit tool** engineered to evaluate, monitor, and mitigate semantic drift and representation collapse in parallel AI agent architectures. Specifically optimized as an out-of-band companion validation utility for high-concurrency clusters like `eightb-agy-fanout`, this toolkit intercepts agent state trajectories and screens them against hard metric invariants.
 
 Rather than relying on post-hoc text heuristics or float-based statistics, this tool executes **zero-copy parallel transport verification** directly on latent state vectors. By treating agent traces as discrete trajectories moving through non-Euclidean manifolds, it exposes hidden contextual corruption at the physical silicon layer before it can contaminate downstream multi-agent response pools.
